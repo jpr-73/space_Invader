@@ -1,9 +1,10 @@
 import Global.display
 import hevs.graphics.FunGraphics
 
-import java.awt.Color
+import java.awt._
 import java.awt.event._
 import javax.swing.Timer
+import scala.Console.WHITE
 import scala.collection.mutable.ArrayBuffer
 
 object Global {
@@ -18,8 +19,8 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
   private var right = false
   var shot = false
   var speed = 3
-  var lastDx = 1
-  var lastDy = 0
+  private var lastDx = 1
+  private var lastDy = 0
 
 
 
@@ -74,6 +75,47 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
 
 class Invader(var x: Int, var y:Int, var size: Int, var c: Color){
 
+  private val d= 100
+  private var tempDist = 200
+  private var left = true
+  private var right = false
+  private var lDx = 1
+  //private var lDy = 0
+  var speed = 2
+
+
+  def movement():Int={
+    val dx = (if (tempDist >= 0 && tempDist<d) 1 else 0) +
+      (if (tempDist == d && tempDist > 0 ) -1 else 0)
+
+    for(_ <- 0 to d){
+      if(tempDist >= 0 && left)
+        tempDist -= 1
+
+      if(tempDist == 0){
+        left = false
+        right = true
+      }
+      else if(tempDist <= 200 && right)
+        tempDist += 1
+      if(tempDist == 200){
+        left = true
+        right = false
+      }
+    }
+
+    if(dx != 0) {
+      lDx = dx
+    }
+
+    dx
+  }
+
+
+  def draw(): Unit ={
+    display.setColor(c)
+    display.drawFillRect(x, y, size, size)
+  }
 }
 
 
@@ -95,36 +137,47 @@ class Projectile(var x: Int, var y: Int, var size: Int, var speed: Int, var dx: 
 
 
 class Game1{
-  private var grid : Array[Array[Int]] = Array.fill(1980, 1080)(0)
-  private var numLives = 3
+  private val grid : Array[Array[Int]] = Array.fill(1980, 1080)(0)
 
-  private var score = 0
+  //private var numLives = 3
 
-  var highscore = 0
+  private val score = 0
+
+  //var high-score = 0
 
 
 
-  val s: Spaceship = new Spaceship(
+  private val s: Spaceship = new Spaceship(
     960,
     540,
     30,
     Color.CYAN
   )
 
-  private var prevX = s.x
-  private var prevY = s.y
+  private val i: ArrayBuffer[Invader] = ArrayBuffer(
+    new Invader(200, 200, 40, Color.RED),
+    new Invader(500, 200, 40, Color.RED),
+    new Invader(800, 200, 40, Color.RED),
 
-  private val projectiles: ArrayBuffer[Projectile] = ArrayBuffer()
+  )
 
+//  private var prevX = s.x
+//  private var prevY = s.y
+
+  private val ship_proj: ArrayBuffer[Projectile] = ArrayBuffer()
+
+  private val inv_proj: ArrayBuffer[Projectile] = ArrayBuffer()
 
   private var shotCooldown = 0
   private val SHOT_COOLDOWN_FRAMES = 15
-
   private var firstDraw = true
+
+
+
 
   private val timer = new Timer(16, (_: ActionEvent)=>{
     if(firstDraw){
-      for(row <- grid.indices; col <- grid(row).indices){
+      for(row <- grid.indices; _ <- grid(row).indices){
         Global.display.setColor(Color.BLACK)
       }
       firstDraw = false
@@ -135,10 +188,38 @@ class Game1{
     s.y = Math.max(0, Math.min(1080 - s.size, s.y + dy * s.speed))
 
 
+
+    i.foreach(iv => {
+      var x = 0
+      var l = false
+      var r = true
+      val ivx = iv.movement()
+      if(r) {
+        iv.x = Math.max(0, Math.min(1920 -i.size, iv.x + ivx * iv.speed))
+      }
+      x +=1
+      if(x == 100) {
+        l = true
+        r = false
+      }
+      if(l) {
+        iv.x = Math.max(0, Math.min(1920 -i.size, iv.x - ivx * iv.speed))
+        x -= 1
+      }
+      if(x == 0){
+        l = false
+        r = true
+      }
+
+    }
+
+    )
+
+
+    // projectile management of the ship
     if(shotCooldown > 0){
       shotCooldown -= 1
     }
-
 
     if(s.shot && shotCooldown <= 0){
       val projX = s.x + s.size / 2
@@ -147,26 +228,50 @@ class Game1{
       val dx = 0
       val dy = -1
 
-      projectiles += new Projectile(projX, projY, 8, 8, dx, dy)
+      ship_proj += new Projectile(projX, projY, 8, 8, dx, dy)
       shotCooldown = SHOT_COOLDOWN_FRAMES
     }
-
 
     if(!s.shot){
       shotCooldown = 0
     }
 
-    projectiles.foreach(_.update())
-    projectiles.filterInPlace(!_.isOutOfBounds(1920, 1080))
+    //projectile management of the invaders
+
+//    if(shotCooldown <= 0 ){
+//      i.foreach(iv =>{
+//        val pjX = iv.x + i.size / 2
+//        val pjY = iv.y + i.size / 2
+//
+//        val dx = 0
+//        val dy = 1
+//        inv_proj += new Projectile(pjX, pjY, 9, 9, dx, dy)
+//        shotCooldown = SHOT_COOLDOWN_FRAMES
+//        }
+//      )
+//    }
+
+    // collision detection spaceship -> invader
+
+
+
+    ship_proj.foreach(_.update())
+    ship_proj.filterInPlace(!_.isOutOfBounds(1920, 1080))
+
+    inv_proj.foreach(_.update())
+    inv_proj.filterInPlace(!_.isOutOfBounds(1920, 1080))
 
     display.setColor(Color.BLACK)
     display.drawFillRect(0, 0, 1920, 1080)
 
     s.draw()
-    projectiles.foreach(_.draw())
+    ship_proj.foreach(_.draw())
+
+    i.foreach(_.draw())
+    inv_proj.foreach(_.draw())
 
     display.setColor(Color.WHITE)
-    display.drawString(20, 30, s"Score : $score")
+    display.drawString(20, 30, s"Score : $score", WHITE)
 
   })
   timer.start()
