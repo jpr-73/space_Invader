@@ -5,11 +5,13 @@ import java.awt._
 import java.awt.event._
 import javax.swing.Timer
 
-
+// main interface, made as a global object to make functions with
+// the interface in several classes (draw)
 object Global {
   var display: FunGraphics = new FunGraphics(1920, 1080)
 }
 
+//class of the spaceship which the user will be able to control
 class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
 
   // values to verify the direction of the spaceship and if its shooting
@@ -32,7 +34,7 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
     (horizon, vertical)
   }
 
-  //draw a filled rectangle for the spaceship
+  //draw a rectangle for the spaceship
   def draw(): Unit = {
     display.setColor(c)
     display.drawFillRect(x, y, size, size)
@@ -40,7 +42,6 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
 
 
   //checks which key has been pressed for the direction and movement
-  // and changes the state of the values from false to true
   display.setKeyManager(new KeyAdapter() {
     override def keyPressed(e: KeyEvent): Unit = {
       e.getKeyCode match {
@@ -55,7 +56,6 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
     }
 
     //checks if the key has been released to stop the action
-    // and change the state of values from true to false
     override def keyReleased(e: KeyEvent): Unit = {
       e.getKeyCode match {
         case KeyEvent.VK_LEFT | KeyEvent.VK_A => left = false
@@ -70,9 +70,7 @@ class Spaceship(var x: Int, var y: Int, var size: Int, var c: Color){
 }
 
 
-// class of the invader where there only needs the position of the invader
-//  and offsets because we are moving the invaders as a group not
-// individually
+//class of the invader which is the enemy
 class Invader(var x: Int, var y: Int, val offsetX: Int, val offsetY: Int, var size: Int, var c: Color) {
   def draw(): Unit = {
     display.setColor(c)
@@ -108,38 +106,38 @@ class Projectile(var x: Int, var y: Int, var size: Int, var speed: Int, var dx: 
 
 class Game1 {
 
-  // Player info
+  // player stats
   private var lives = 3
   private var score = 0
 
-  // Game state
+  // game state
   private var gameStarted = false
   private var gameOver = false
 
-  // Invader formation
+  // invader formation
   private var formationX = 0
   private val formationY = 0
   private var invaderDir = 1
   private val invaderSpeed = 3
   private val respawnDelay = 2500
 
-  // Shooting
+  // projectile delay
   private var shotCooldown = 0
   private val shotFrames = 25
   private val invaderShotPeriod = 60
   private val invaderShotOffset = 20
   private var frameCount = 0
 
-  // Spaceship
+  // the spaceship
   private val spaceship = new Spaceship(960, 540, 30, Color.PINK)
 
-  // Maximum numbers for arrays
+  // max values for invader, projectiles and marked for dead
   private val maxInvaders = 20
   private val maxShipProj = 50
   private val maxInvProj = 50
   private val maxDead = 50
 
-  // Invaders
+  // the invaders in a certain formation
   private val invaders: Array[Invader] = new Array(maxInvaders)
   private var invaderCount = 9
   invaders(0) = new Invader(0, 0, 80, 260, 60, Color.RED)
@@ -156,14 +154,14 @@ class Game1 {
   private val deadInvaders: Array[(Int, Int, Int, Color, Long)] = new Array(maxDead)
   private var deadCount = 0
 
-  // Projectiles
+  // the projectiles
   private val shipProj: Array[Projectile] = new Array(maxShipProj)
   private var shipProjCount = 0
 
   private val invProj: Array[Projectile] = new Array(maxInvProj)
   private var invProjCount = 0
 
-  // Background stars
+  // background stars for style
   private val starCount = 300
   private val starX = Array.fill(starCount)(scala.util.Random.nextInt(1920))
   private val starY = Array.fill(starCount)(scala.util.Random.nextInt(1080))
@@ -172,6 +170,8 @@ class Game1 {
     if(scala.util.Random.nextBoolean()) new Color(20, 20, 80) else Color.YELLOW
   )
 
+
+  // dimensions for the button start/ restart
   private val scoreFont = new Font("Lithograph", Font.BOLD, 36)
   private val buttonX = 810
   private val buttonY = 500
@@ -180,7 +180,8 @@ class Game1 {
 
 
 
-  private def updateSpaceship(): Unit = {
+  // move, shoot with the spaceship
+  private def moveship(): Unit = {
     val (dx, dy) = spaceship.computeDirection()
 
     // compute next position
@@ -201,11 +202,12 @@ class Game1 {
     if(shotCooldown > 0) shotCooldown -= 1
   }
 
-  private def updateInvaders(): Unit = {
+  // function so that the invader automatically moves and shot
+  private def moveInvader(): Unit = {
     // move the formation
     formationX += invaderDir * invaderSpeed
 
-    // check edges
+    // check edges to make sure they don't go out of the screen
     var leftMost = Int.MaxValue
     var rightMost = Int.MinValue
     for(i <- 0 until invaderCount){
@@ -233,8 +235,9 @@ class Game1 {
     }
   }
 
-  private def updateProjectiles(): Unit = {
-    // update spaceship projectiles
+  // update spaceship projectiles, so they are moving
+  private def projectiltrajectory(): Unit = {
+
     var i = 0
     while(i < shipProjCount){
       val p = shipProj(i)
@@ -258,7 +261,8 @@ class Game1 {
     }
   }
 
-  private def handleCollisions(): Unit = {
+  // if a projectile hits something, invader dies or spaceship loses a life
+  private def collisionsCheck(): Unit = {
     // spaceship hits invaders
     var i = 0
     while(i < shipProjCount){
@@ -306,7 +310,8 @@ class Game1 {
     if(lives <= 0) gameOver = true
   }
 
-  private def respawnInvaders(): Unit = {
+  //respawn invader function after a certain amount of time
+  private def respawninvaders(): Unit = {
     val currentTime = System.currentTimeMillis()
     var i = 0
     while(i < deadCount){
@@ -322,6 +327,7 @@ class Game1 {
     }
   }
 
+  // render the spaceship, invaders, background, projectiles, player stats
   private def renderGame(): Unit = {
     display.setColor(Color.BLACK)
     display.drawFillRect(0,0,1920,1080)
@@ -345,6 +351,8 @@ class Game1 {
     }
   }
 
+
+  // draws 2 circle and a triangle below them to make a heart
   private def drawHeart(x: Int, y: Int, size: Int, c: Color): Unit = {
     display.setColor(c)
     val r = size/2
@@ -357,6 +365,7 @@ class Game1 {
     display.drawFilledPolygon(t,c)
   }
 
+  // resets the initial values to match the game start
   private def restartGame(): Unit ={
     lives = 3
     score = 0
@@ -371,11 +380,13 @@ class Game1 {
 
   }
 
+  // checks if the mouse is in the rectangle's dimension
   private def checkStartbtn(mx:Int, my:Int): Boolean ={
     mx >= buttonX && my <= buttonX + buttonWidth &&
       my >= buttonY && my <= buttonY + buttonHeight
   }
 
+  // listens to check if the mouse has been clicked
   display.addMouseListener(new MouseAdapter() {
     override def mouseClicked(e: MouseEvent): Unit = {
       if(!gameStarted && checkStartbtn(e.getX, e.getY)){
@@ -388,8 +399,7 @@ class Game1 {
   })
 
 
-
-
+  // initial game state with title, instruction, start button, when code executed
   private def drawStartScreen(): Unit = {
     display.setColor(Color.BLACK)
     display.drawFillRect(0,0,1920,1080)
@@ -406,6 +416,7 @@ class Game1 {
     display.drawString(900, 750, "E to Shoot", instructFont, Color.WHITE)
   }
 
+  // final game state with title and restart button, when game lost
   private def drawGameOverScreen(): Unit = {
     display.setColor(Color.BLACK)
     display.drawFillRect(0,0,1920,1080)
@@ -422,16 +433,17 @@ class Game1 {
 
 
 
+  // main loop where everything runs from here
   private val timer = new Timer(16, (_: ActionEvent) => {
     if(!gameStarted) drawStartScreen()
     else if(gameOver) drawGameOverScreen()
     else {
       frameCount += 1
-      updateSpaceship()
-      updateInvaders()
-      updateProjectiles()
-      handleCollisions()
-      respawnInvaders()
+      moveship()
+      moveInvader()
+      projectiltrajectory()
+      collisionsCheck()
+      respawninvaders()
       renderGame()
     }
   })
